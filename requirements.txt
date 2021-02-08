@@ -1,0 +1,6 @@
+redis==3.5.3
+sacremoses==0.0.43
+sentence-transformers==0.3.8
+sentencepiece==0.1.94
+tokenizers==0.8.1rc2
+transformers==3.3.1
