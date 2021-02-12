@@ -1,7 +1,15 @@
+# ignore local development files
+models/
+tmp/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# vim files
+*.swo
+.fuse*
 
 # C extensions
 *.so
