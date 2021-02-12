@@ -1,4 +1,4 @@
-redis==3.5.3
+redis==2.10.6
 sacremoses==0.0.43
 sentence-transformers==0.3.8
 sentencepiece==0.1.94

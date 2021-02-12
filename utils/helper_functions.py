@@ -3,7 +3,6 @@ import numpy as np
 import scipy.spatial
 from collections import OrderedDict 
 
-
 # this function accepts a string
 # replaces newlines with ' ' empty space
 # splits all lines on the basis of '.'
@@ -15,7 +14,6 @@ def payload_text_preprocess(text):
     text = [x for x in text if len(x) >=50]
 
     return text
-
 
 
 def download_text_file_and_embeddings_from_s3_bucket(self, sess):
@@ -33,15 +31,35 @@ def download_text_file_and_embeddings_from_s3_bucket(self, sess):
     # used for generating lines after running the cosine similiarity match after the clustering is done
     self.s3.download_file('readneedobjects', 'v2/'+sess+'/text_content.txt', 'tmp/'+sess+'/text_content.txt')
     
-    print('dowload complete!')
+    print('files download complete!')
 
 
 
 def load_text_file_and_embeddings(self, sess):
 
-    with open('tmp/'+sess+'/text_content.txt', 'r') as file:
-        file_string = file.read()
-    print('wotihin load_text_file_and_embeddings')
+    try:
+        with open('tmp/'+sess+'/text_content.txt', 'r') as file:
+            file_string = file.read()
+    except Exception as e:
+        print('text and encoding files for '+sess+' not loaded because error:\n ', e)
+        print('\nretrying to download file one more time')
+        print('deleting previos corrupt downloaded files from folder ', 'tmp/', sess)
+        os.rmdir('tmp/'+sess)
+
+        download_text_file_and_embeddings_from_s3_bucket(self, sess)
+        print('trying to load text file for', sess, ' once again')
+        
+        with open('tmp/'+sess+'/text_content.txt', 'r') as file:
+            file_string = file.read()
+
+        print('text files for '+sess+' loaded succesfully')
+
+    else:
+        print('text files for '+sess+' loaded succesfully')
+
+    
+
+
     # make the text file ready for passing to encoder as a list of strings
     corpus = payload_text_preprocess(file_string)
 
