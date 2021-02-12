@@ -34,14 +34,19 @@ class PythonPredictor:
         self.aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
         
         # establish connection with s3 bucket
-        self.s3 = boto3.client('s3', aws_access_key_id=self.aws_access_key_id , aws_secret_access_key=self.aws_secret_access_key)
-
-
+        
+        try:  
+            self.s3 = boto3.client('s3', aws_access_key_id=self.aws_access_key_id , aws_secret_access_key=self.aws_secret_access_key)
+            print('Connected to s3 bucket!')
+        except Exception as ex:
+            print('\n\naws client error:', ex)
+            exit('Failed to connect to s3 bucket, terminating.')
+        
+        
         # establish connection to redis server to be used as data store persistence
 
         try:
-            self.r = redis.StrictRedis(host=self.redis_host, port=self.redis_port, password=self.redis_passkey, decode_responses=True)
-            
+            self.r = redis.StrictRedis(host=self.redis_host, port=self.redis_port, decode_responses=True)
             self.r.ping()
             print('Connected to redis cache!')
         except Exception as ex:

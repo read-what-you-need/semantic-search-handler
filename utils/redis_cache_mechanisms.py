@@ -8,7 +8,7 @@ from collections import OrderedDict
 # if requested number of lines is greater than what's cached, then return true
 
 def check_if_request_to_be_cached(self, sess, query, max_results):
-    print('in check for cachce or not')
+    print('in check for cache or not')
     cache_condition_chech_query_exist = self.r.sismember('uuid:'+sess+':queries', str(query))
     cache_condition_check_query_cardinality = self.r.zcard('match_lines_sorted_set:'+sess+':'+str(query))
     
@@ -33,6 +33,16 @@ def cache_response_to_redis(self, sess, query, response):
     print('response and query cached 🌻')
 
     pipe.execute()
+
+
+
+
+
+
+
+
+
+
 
 
 def get_cache_data_from_redis(self, sess, query, max_results):
