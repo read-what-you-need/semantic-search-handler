@@ -26,10 +26,22 @@ def hash_it(string):
 
 def get_query_hash(string):
 
-
     # number of bits from sha1 hash to be used for line and query ids
     # chech hash_it function for more details on why we are slicing a part of sha1 hash
     QUERY_HASH_SHA1_BITS_RETAIN = 11
+    
+
+    query_hash = hash_it(string)
+    query_hash_id = query_hash[:QUERY_HASH_SHA1_BITS_RETAIN]
+
+    return query_hash_id
+
+
+def get_line_hash(string):
+
+    # number of bits from sha1 hash to be used for line and query ids
+    # chech hash_it function for more details on why we are slicing a part of sha1 hash
+    QUERY_HASH_SHA1_BITS_RETAIN = 10
     
 
     query_hash = hash_it(string)
@@ -51,27 +63,27 @@ def check_if_request_to_be_cached(self, sess, query, max_results):
 
     query_hash_id = get_query_hash(query)
 
-    query_id_val = self.r.hget(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[3::])
+    query_id_val = self.r.hget(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[2::])
 
     # if check_query_exist returns None, it means item was not present
-    check_query_exist = self.r.hget(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[3::])
+    check_query_exist = self.r.hget(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[2::])
+
 
     # check_query_cardinality contains info about the number of lines present in cache for a given query
-    check_query_cardinality = self.r.zcard(sess+':query_id:'+str(query_id_val)+':match_lines')
+    check_query_cardinality = self.r.xlen(sess+':query_id:'+str(query_id_val)+':match_lines')
     
 
     '''
-    cache_bool_value is decided on two conditions
-    1. if the query already exists in the store
+    cache_bool_value is True if either of the two conditions are met
+    1. if the query does not exist in the data store
     2. if number of requested lines is greater than already present in cache, for a given query of a file
-    If either of them is true, cache is updated
     '''
 
     cache_condition_check_query_exist = type(check_query_exist) == type(None)
     cache_condition_check_query_cardinality = max_results > check_query_cardinality
 
-    print('is query not cached: ', cache_condition_check_query_exist)
-    print('does number of requested lines exceed the ones in cache: ',  cache_condition_check_query_cardinality)
+    print('query not present in cache: ', cache_condition_check_query_exist)
+    print('number of requested lines exceed the ones in cache: ',  cache_condition_check_query_cardinality)
     
     # cache_bool_value stores information if caching of the query and response has to be performed or not
     cache_bool_value = cache_condition_check_query_exist or cache_condition_check_query_cardinality
@@ -82,12 +94,10 @@ def check_if_request_to_be_cached(self, sess, query, max_results):
 
 
 '''
-1 query with 110 returned lines takes : 110KB
-
-206 hashs with 335 fields (98.56% of keys, avg size 1.63)
-2 sets with 111 members (00.96% of keys, avg size 55.50)
-1 zsets with 110 members (00.48% of keys, avg size 110.00)
-
+1 query with 104 returned lines takes : 30KB
+92 hashs with 109 fields (94.85% of keys, avg size 1.18)
+2 strings with 325 bytes (02.06% of keys, avg size 162.50)
+3 streams with 217 entries (03.09% of keys, avg size 72.33)
 '''
 
 def cache_response_to_redis(self, sess, query, response):
@@ -101,12 +111,11 @@ def cache_response_to_redis(self, sess, query, response):
 
     # number of bits from sha1 hash to be used for line and query ids
     # chech hash_it function for more details on why we are slicing part of sha1 hash
-    QUERY_HASH_SHA1_BITS_RETAIN = 11
-    LINE_HASH_SHA1_BITS_RETAIN = 10
+
+    APPEND_FROM = 0
 
 
-    query_hash = hash_it(query)
-    query_hash_id = query_hash[:QUERY_HASH_SHA1_BITS_RETAIN]
+    query_hash_id = get_query_hash(query)
 
     # start redis atomic operation
     
@@ -124,9 +133,10 @@ def cache_response_to_redis(self, sess, query, response):
 
     
     if unique_query_bool == 1:
-        # create new query id
-        query_id_val = pipe.hincrby('unq_ids', sess+':query_ids', 1)
-        
+
+        # create a stream object of query, containing query content and asked global
+        query_id_val = pipe.xadd(sess+':query:', {'content': query, 'asked_global': 0})
+
 
         # create a map between query to query id
         '''
@@ -134,46 +144,41 @@ def cache_response_to_redis(self, sess, query, response):
         so we split the 3 million queries into 4096 hashes containing 1000 fields
         each storing a particular query id
         '''
-        pipe.hset(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[3::], query_id_val)
+        pipe.hset(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[2::], query_id_val)
         
-
-        # create a map between query_id to string_val
-        pipe.hset(sess+':query_id:'+str(query_id_val), 'query', query)
-        
-
-        # add asked global field value to given query
-        pipe.hset(sess+':query_id:'+str(query_id_val), 'asked_global', 0)
         
     else:
 
-        query_id_val = pipe.hget(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[3::])
+        # query has already been cached with n elements, 
+        # we are appending the cachce stream with new elements
+
+        query_id_val = pipe.hget(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[2::])
+
+        if len(response) > pipe.xlen(sess+':query_id:'+str(query_id_val)+':match_lines'):
+            
+            APPEND_FROM = pipe.xlen(sess+':query_id:'+str(query_id_val)+':match_lines')
 
 
 
-    for line, score in response.items():
+    for line, score in list(response.items())[APPEND_FROM::]:
 
-
-        line_hash = hash_it(line)
-        line_hash_id = line_hash[:LINE_HASH_SHA1_BITS_RETAIN]
+        line_hash_id = get_line_hash(line)
         
         # give unique id to unique line
         
-
-        
         unique_line_bool = pipe.pfadd('uuid:'+sess+':lines', line_hash_id)
 
-        if unique_line_bool:
-            
-            line_id_val = pipe.hincrby('unq_ids', sess+':line_ids', 1)
-                 
+        if unique_line_bool == 1:
+
+
+            # create a stream object of line, containing content and bookmark global
+            line_id_val = pipe.xadd(sess+':line:', {'content': line, 'bookmark_global': 0})
+
+                
             # create map between line to line_id_val
             pipe.hset(sess+':line_to_id:'+line_hash_id[:2], line_hash_id[3::], line_id_val)
 
-            # create map between line_id_val to string_val
-            pipe.hset(sess+':line_id:'+str(line_id_val), 'content', line)
-
-            # add bookmarked global field value to given line
-            pipe.hset(sess+':line_id:'+str(line_id_val), 'bookmarked_global', 0)
+            
 
         else:
 
@@ -181,7 +186,9 @@ def cache_response_to_redis(self, sess, query, response):
 
             line_id_val = pipe.hget(sess+':line_to_id:'+line_hash_id[:2], line_hash_id[3::])
 
-        pipe.zadd(sess+':query_id:'+str(query_id_val)+':match_lines', {line_id_val: score}, 'nx')
+
+        pipe.xadd(sess+':query_id:'+str(query_id_val)+':match_lines', {line_id_val: score})
+        
 
 
     print('response and query cached 🌻')
@@ -193,15 +200,25 @@ def get_cache_data_from_redis(self, sess, query, max_results):
 
     query_hash_id = get_query_hash(query)
 
-    query_id_val = self.r.hget(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[3::])
+    query_id_val = self.r.hget(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[2::])
 
-    line_id_and_score = self.r.zrevrange(sess+':query_id:'+str(query_id_val)+':match_lines', 0, max_results, withscores=True)
+    line_id_and_score = self.r.xrange(sess+':query_id:'+str(query_id_val)+':match_lines', '-', '+', count=max_results)
 
     redis_response = []
 
-    for line_id_val, score in line_id_and_score:
-        content = self.r.hget(sess+':line_id:'+str(line_id_val), 'content')
-        redis_response.append([content, score])
+    for stream_id, line_obj_score_dict in line_id_and_score:
+        line_id_val = line_obj_score_dict.keys()
+        score = line_obj_score_dict.values()
+        
+        line_id_val = list(line_id_val)
+        score = list(score)
+        score = score[0]
+
+        line_obj = self.r.xrange(sess+':line:', line_id_val[0], line_id_val[0])
+        print(line_obj)
+        
+
+        redis_response.append([line_obj[0][1]['content'], score])
 
 
     return redis_response

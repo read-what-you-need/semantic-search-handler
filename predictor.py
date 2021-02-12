@@ -117,7 +117,11 @@ class PythonPredictor:
 
             response = helper_functions.cluster(self, corpus_and_embeddings, queries_and_embeddings, max_results, acc_greater_than)
             
+            #-------------------------------Redis cache layer----------------------------------
+            
             redis_cache_mechanisms.cache_response_to_redis(self, sess, query, response)
+            
+            #----------------------------------------------------------------------------------
 
             response = OrderedDict(islice(response.items(), 0, payload['top']))
             
