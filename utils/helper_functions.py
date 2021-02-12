@@ -24,7 +24,7 @@ def download_text_file_and_embeddings_from_s3_bucket(self, sess):
         self.s3.download_fileobj('readneedobjects', 'v2/'+sess+'/corpus_encode.npy', f)
 
 
-    print('downloading encoded weights 👣')
+    print('\ndownloading encoded weights 👣')
 
 
     # download the text content of the given file

@@ -46,7 +46,7 @@ class PythonPredictor:
         # establish connection to redis server to be used as data store persistence
 
         try:
-            self.r = redis.StrictRedis(host=self.redis_host, port=self.redis_port, decode_responses=True)
+            self.r = redis.StrictRedis(host=self.redis_host, port=self.redis_port, password=self.redis_passkey, decode_responses=True)
             self.r.ping()
             print('Connected to redis cache!')
         except Exception as ex:
@@ -59,7 +59,6 @@ class PythonPredictor:
         if os.path.exists(self.dir):
             shutil.rmtree(self.dir)
         os.makedirs(self.dir)                                           
-
 
 
     def predict(self, payload):
@@ -77,6 +76,8 @@ class PythonPredictor:
         acc_greater_than  = payload["accuracyGreaterThan"]
         
         cache_bool_value = redis_cache_mechanisms.check_if_request_to_be_cached(self, sess, query, max_results)
+        
+        print('are we caching the values:', cache_bool_value)
                 
         if cache_bool_value:
             
@@ -131,4 +132,3 @@ class PythonPredictor:
             response_cache = redis_cache_mechanisms.get_cache_data_from_redis(self, sess, query, max_results)
             
             return response_cache
-
