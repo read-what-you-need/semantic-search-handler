@@ -100,7 +100,7 @@ def check_if_request_to_be_cached(self, sess, query, max_results):
 3 streams with 217 entries (03.09% of keys, avg size 72.33)
 '''
 
-def cache_response_to_redis(self, sess, query, response):
+def cache_response_to_redis(self, sess, query, response, max_results):
     '''
     sess: type of string
     query: type of string
@@ -113,7 +113,7 @@ def cache_response_to_redis(self, sess, query, response):
     # chech hash_it function for more details on why we are slicing part of sha1 hash
 
     APPEND_FROM = 0
-
+    UNIQUE_RESULTS_FOUND=True
 
     query_hash_id = get_query_hash(query)
 
@@ -155,40 +155,45 @@ def cache_response_to_redis(self, sess, query, response):
         query_id_val = pipe.hget(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[2::])
 
         if len(response) > pipe.xlen(sess+':query_id:'+str(query_id_val)+':match_lines'):
-            
+            # more results are present
             APPEND_FROM = pipe.xlen(sess+':query_id:'+str(query_id_val)+':match_lines')
 
+        if max_results > len(response):
+            UNIQUE_RESULTS_FOUND = False
 
 
-    for line, score in list(response.items())[APPEND_FROM::]:
 
-        line_hash_id = get_line_hash(line)
-        
-        # give unique id to unique line
-        
-        unique_line_bool = pipe.pfadd('uuid:'+sess+':lines', line_hash_id)
+    if UNIQUE_RESULTS_FOUND:
 
-        if unique_line_bool == 1:
+        for line, score in list(response.items())[APPEND_FROM::]:
+
+            line_hash_id = get_line_hash(line)
+            
+            # give unique id to unique line
+            
+            unique_line_bool = pipe.pfadd('uuid:'+sess+':lines', line_hash_id)
+
+            if unique_line_bool == 1:
 
 
-            # create a stream object of line, containing content and bookmark global
-            line_id_val = pipe.xadd(sess+':line:', {'content': line, 'bookmark_global': 0})
+                # create a stream object of line, containing content and bookmark global
+                line_id_val = pipe.xadd(sess+':line:', {'content': line, 'bookmark_global': 0})
+
+                    
+                # create map between line to line_id_val
+                pipe.hset(sess+':line_to_id:'+line_hash_id[:2], line_hash_id[3::], line_id_val)
 
                 
-            # create map between line to line_id_val
-            pipe.hset(sess+':line_to_id:'+line_hash_id[:2], line_hash_id[3::], line_id_val)
 
+            else:
+
+                # get line_id_val
+
+                line_id_val = pipe.hget(sess+':line_to_id:'+line_hash_id[:2], line_hash_id[3::])
+
+
+            pipe.xadd(sess+':query_id:'+str(query_id_val)+':match_lines', {line_id_val: score})
             
-
-        else:
-
-            # get line_id_val
-
-            line_id_val = pipe.hget(sess+':line_to_id:'+line_hash_id[:2], line_hash_id[3::])
-
-
-        pipe.xadd(sess+':query_id:'+str(query_id_val)+':match_lines', {line_id_val: score})
-        
 
 
     print('response and query cached 🌻')
@@ -221,6 +226,4 @@ def get_cache_data_from_redis(self, sess, query, max_results):
         redis_response.append([line_obj[0][1]['content'], score])
 
 
-    return redis_response
-
-    #return json.dumps(OrderedDict(redis_response))
+    return json.dumps(OrderedDict(redis_response))
