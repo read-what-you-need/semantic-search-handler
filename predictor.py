@@ -23,7 +23,8 @@ class PythonPredictor:
     def __init__(self, config):
 
         # download the information retrieval model trained on MS-MARCO dataset
-        self.embedder = SentenceTransformer('distilroberta-base-msmarco-v2')
+        # self.embedder = SentenceTransformer('distilroberta-base-msmarco-v2')
+        self.embedder = SentenceTransformer('../models/distilroberta-base-msmarco-v2')
         
         # set the environment variables
         self.redis_host = os.getenv('REDIS_HOST')
@@ -119,7 +120,7 @@ class PythonPredictor:
             
             #-------------------------------Redis cache layer----------------------------------
             
-            redis_cache_mechanisms.cache_response_to_redis(self, sess, query, response)
+            redis_cache_mechanisms.cache_response_to_redis(self, sess, query, response, max_results)
             
             #----------------------------------------------------------------------------------
 
