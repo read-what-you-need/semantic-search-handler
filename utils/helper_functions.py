@@ -1,4 +1,5 @@
 import os
+import shutil
 import numpy as np
 import scipy.spatial
 from collections import OrderedDict 
@@ -44,7 +45,10 @@ def load_text_file_and_embeddings(self, sess):
         print('text and encoding files for '+sess+' not loaded because error:\n ', e)
         print('\nretrying to download file one more time')
         print('deleting previos corrupt downloaded files from folder ', 'tmp/', sess)
-        os.rmdir('tmp/'+sess)
+        
+        if os.path.exists('tmp/'+sess):
+            shutil.rmtree('tmp/'+sess)
+        os.makedirs(self.dir)       
 
         download_text_file_and_embeddings_from_s3_bucket(self, sess)
         print('trying to load text file for', sess, ' once again')

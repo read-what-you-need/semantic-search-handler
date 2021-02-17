@@ -96,11 +96,12 @@ def cache_response_to_redis(self, sess, query, response, max_results):
     '''
     
     print('hold on tight 🌠 caching query and response to redis')
-
+    
     # number of bits from sha1 hash to be used for line and query ids
     # chech hash_it function for more details on why we are slicing part of sha1 hash
 
     APPEND_FROM = 0
+    APPEND_TILL = None
     UNIQUE_RESULTS_FOUND=True
 
     query_hash_id = get_sliced_hash(query)
@@ -147,25 +148,33 @@ def cache_response_to_redis(self, sess, query, response, max_results):
 
         query_id_val = pipe.hget(sess+':query_to_id:'+query_hash_id[:2], query_hash_id[2::])
 
-        if len(response) > pipe.zcard(sess+':query_id:'+str(query_id_val)+':match_lines'):
-            # more results are present
-            APPEND_FROM = pipe.zcard(sess+':query_id:'+str(query_id_val)+':match_lines')
 
-        if max_results > len(response):
-            UNIQUE_RESULTS_FOUND = False
+    if len(response) >= max_results :
+        # more results are present
+        APPEND_FROM = pipe.zcard(sess+':query_id:'+str(query_id_val)+':match_lines')
+        APPEND_TILL = max_results
 
+    if len(response) < max_results:
+        # if requesting for more results than already present
+        APPEND_FROM = pipe.zcard(sess+':query_id:'+str(query_id_val)+':match_lines')
+        APPEND_TILL = len(response)
 
+    if len(response) == pipe.zcard(sess+':query_id:'+str(query_id_val)+':match_lines'):
+        # if all responses are present, skip caching lines
+        UNIQUE_RESULTS_FOUND = False
 
+ 
+    
 
     if UNIQUE_RESULTS_FOUND:
 
-        for line, score in list(response.items())[APPEND_FROM::]:
+        for line, score in list(response.items())[APPEND_FROM:APPEND_TILL]:
 
             line_hash_id = get_sliced_hash(line)
             
             # give unique id to unique line
             
-            unique_line_bool = pipe.pfadd('uuid:'+sess+':lines', line_hash_id)
+            unique_line_bool = pipe.sadd('uuid:'+sess+':lines:', line_hash_id)
 
             if unique_line_bool == 1:
 
@@ -175,7 +184,7 @@ def cache_response_to_redis(self, sess, query, response, max_results):
                 # create map between line to line_id_val
                 pipe.hset(sess+':line_to_id:'+line_hash_id[:2], line_hash_id[2::], line_id_val)
 
-                # create a map between query_id to string_va
+                # create a map between query_id to string_val
                 pipe.hset(sess+':line_id:'+str(line_id_val), 'content', line)
 
                 # add bookmarked global field value to given line
@@ -211,5 +220,4 @@ def get_cache_data_from_redis(self, sess, query, max_results):
         content = self.r.hget(sess+':line_id:'+str(line_id_val), 'content')
         redis_response.append([content, score])
 
- 
     return json.dumps(OrderedDict(redis_response))
