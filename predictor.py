@@ -29,11 +29,15 @@ class PythonPredictor:
         # set the environment variables
         self.aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
         self.aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+        self.aws_region_name = os.getenv('AWS_REGION_NAME')
         
         # establish connection with s3 bucket
         
         try:  
-            self.s3 = boto3.client('s3', aws_access_key_id=self.aws_access_key_id , aws_secret_access_key=self.aws_secret_access_key)
+            self.s3 = boto3.client('s3', aws_access_key_id=self.aws_access_key_id , 
+            aws_secret_access_key=self.aws_secret_access_key, 
+            region_name=self.aws_region_name)
+
             print('Connected to s3 bucket!')
         except Exception as ex:
             print('\n\naws client error:', ex)
