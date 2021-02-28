@@ -61,10 +61,6 @@ class PythonPredictor:
         
         acc_greater_than  = payload["accuracyGreaterThan"]
         
-        # cache_bool_value = iredis_cache_mechanisms.check_if_request_to_be_cached(self, sess, query, max_results)
-        
-        #print('are we caching the values:', cache_bool_value)
-        
         # check if the files for the corresponding file id are present on the local disk or not
         # return 0 if there's no folder present for the file
         sess_dir_find = glob.glob('tmp/'+sess)
