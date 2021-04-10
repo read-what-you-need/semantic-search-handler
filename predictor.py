@@ -13,8 +13,6 @@ import json
 
 import boto3
 
-import redis
-
 from utils import helper_functions 
 
 
