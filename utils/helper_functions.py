@@ -61,8 +61,6 @@ def load_text_file_and_embeddings(self, sess):
     else:
         print('text files for '+sess+' loaded succesfully')
 
-    
-
 
     # make the text file ready for passing to encoder as a list of strings
     corpus = payload_text_preprocess(file_string)
