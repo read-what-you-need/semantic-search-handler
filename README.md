@@ -34,7 +34,10 @@ Only get those results whose accuracy is greater than.
 ### About API
 
 
-- Given a query for a specific file uuid, picks encoding for that file from s3 bucket. If it's a cold start, saves a local copy on disk, serves relevant matching lines
+- Given a query for a specific file uuid
+    - picks encoding for that file from s3 bucket. 
+        - If it's a cold start, saves a local copy on disk, serves relevant matching lines
+        - If it's a warm start, picks lines from locally saved file embeddings
 - If a different query for the same file is received, loads file from disk and returns results
 
 
