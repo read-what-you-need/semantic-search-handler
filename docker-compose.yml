@@ -1,0 +1,12 @@
+version: '3'
+services:
+    search-handler:
+        env_file:
+        - .env
+        build:
+            context: .
+        ports:
+            - "8003:80"
+        volumes:
+            - ./:/code
+            - ./tmp:/code/tmp

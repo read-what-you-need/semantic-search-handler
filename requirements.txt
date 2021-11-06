@@ -1,5 +1,9 @@
 sacremoses==0.0.43
-sentence-transformers==0.3.8
+sentence-transformers==2.1.0
 sentencepiece==0.1.94
-tokenizers==0.8.1rc2
-transformers==3.3.
+tokenizers==0.10.3
+transformers==4.12.3
+boto3==1.17.28
+
+fastapi==0.70.0
+uvicorn==0.15.0
