@@ -4,6 +4,26 @@ import numpy as np
 import scipy.spatial
 from collections import OrderedDict 
 
+import boto3
+
+# set the environment variables
+aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+aws_region_name = os.getenv('AWS_REGION_NAME')
+
+
+# establish connection with s3 bucket
+try:  
+    s3 = boto3.client('s3', aws_access_key_id=aws_access_key_id , 
+    aws_secret_access_key=aws_secret_access_key, 
+    region_name=aws_region_name)
+
+    print('Connected to s3 bucket!')
+except Exception as ex:
+    print('\n\naws client error:', ex)
+    exit('Failed to connect to s3 bucket, terminating.')
+
+
 # this function accepts a string
 # replaces newlines with ' ' empty space
 # splits all lines on the basis of '.'
@@ -17,29 +37,26 @@ def payload_text_preprocess(text):
     return text
 
 
-def download_text_file_and_embeddings_from_s3_bucket(self, sess):
+def download_text_file_and_embeddings_from_s3_bucket(sess):
     os.mkdir('tmp/'+ sess)
     
     # download the corpus encodings for the given uuid file
     with open('tmp/'+sess+'/corpus_encode.npy', 'wb') as f:
-        self.s3.download_fileobj('readneedobjects', 'v2/'+sess+'/corpus_encode.npy', f)
-
+        s3.download_fileobj('readneedobjects', 'v2/'+sess+'/corpus_encode.npy', f)
 
     print('\ndownloading encoded weights 👣')
 
-
     # download the text content of the given file
     # used for generating lines after running the cosine similiarity match after the clustering is done
-    self.s3.download_file('readneedobjects', 'v2/'+sess+'/text_content.txt', 'tmp/'+sess+'/text_content.txt')
+    s3.download_file('readneedobjects', 'v2/'+sess+'/file.txt', 'tmp/'+sess+'/file.txt')
     
     print('files download complete!')
 
 
-
-def load_text_file_and_embeddings(self, sess):
+def load_text_file_and_embeddings(sess):
 
     try:
-        with open('tmp/'+sess+'/text_content.txt', 'r') as file:
+        with open('tmp/'+sess+'/file.txt', 'r') as file:
             file_string = file.read()
     except Exception as e:
         print('text and encoding files for '+sess+' not loaded because error:\n ', e)
@@ -48,12 +65,12 @@ def load_text_file_and_embeddings(self, sess):
         
         if os.path.exists('tmp/'+sess):
             shutil.rmtree('tmp/'+sess)
-        os.makedirs(self.dir)       
+        os.makedirs(dir)       
 
-        download_text_file_and_embeddings_from_s3_bucket(self, sess)
+        download_text_file_and_embeddings_from_s3_bucket(sess)
         print('trying to load text file for', sess, ' once again')
         
-        with open('tmp/'+sess+'/text_content.txt', 'r') as file:
+        with open('tmp/'+sess+'/file.txt', 'r') as file:
             file_string = file.read()
 
         print('text files for '+sess+' loaded succesfully')
@@ -79,7 +96,7 @@ def load_text_file_and_embeddings(self, sess):
 # required by passisng values to max_resutls, acc_thresh filters out
 # lines that are below the passed confidence level
 
-def cluster(self, c, q, max_results, acc_thresh=0.5):
+def cluster(c, q, max_results, acc_thresh=0.5):
 
     queries, query_embeddings = q
     corpus, corpus_embeddings = c
@@ -102,7 +119,7 @@ def cluster(self, c, q, max_results, acc_thresh=0.5):
         
 
             if (1-distance) > acc_thresh:
-                print(corpus[idx].strip(), "(Score: %.4f)" % (1-distance))
+                # print(corpus[idx].strip(), "(Score: %.4f)" % (1-distance))
                 similiar_results.append([corpus[idx].strip(), "%.4f" % (1-distance)])
 
     return OrderedDict(similiar_results)

@@ -1,6 +1,6 @@
 {
-	"uuid": "d74ea1c8-6dbc-4e12-8d71-7c0c3d23b754",
-	"text": "animal",
-	"top": 5,
+	"file_id": "d74ea1c8-6dbc-4e12-8d71-7c0c3d23b754",
+	"query": "animal",
+	"maxResults": 5,
 	"accuracyGreaterThan": 0.2
 }
