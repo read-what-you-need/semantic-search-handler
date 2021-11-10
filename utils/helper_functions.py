@@ -120,7 +120,7 @@ def cluster(c, q, max_results, acc_thresh=0.5):
 
             if (1-distance) > acc_thresh:
                 # print(corpus[idx].strip(), "(Score: %.4f)" % (1-distance))
-                similiar_results.append([corpus[idx].strip(), "%.4f" % (1-distance)])
+                similiar_results.append({"line": corpus[idx].strip(), "score": "%.4f" % (1-distance), "index" : idx})
 
-    return OrderedDict(similiar_results)
+    return similiar_results
 
