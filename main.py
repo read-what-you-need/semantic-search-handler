@@ -17,7 +17,7 @@ import json
 
 
 from utils import helper_functions 
-
+environment_type = os.getenv('SEARCH-HANDLER-ENV')
 # init app
 app = FastAPI()
 
@@ -32,7 +32,11 @@ app.add_middleware(
 )
 
 # download the information retrieval model trained on MS-MARCO dataset
-embedder = SentenceTransformer('./models/distilroberta-base-msmarco-v2')
+if environment_type == "DEV":
+    model_path= './models/distilroberta-base-msmarco-v2'
+if environment_type == "PROD":
+    model_path= 'distilroberta-base-msmarco-v2'
+embedder = SentenceTransformer(model_path)
 
 # create temp dir for storing embeddings 
 dir = 'tmp'
