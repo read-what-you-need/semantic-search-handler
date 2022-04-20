@@ -7,7 +7,7 @@ services:
         build:
             context: .
         ports:
-            - "8003:80"
+            - "80:80"
         volumes:
             - ./:/code
             - ./tmp:/code/tmp
