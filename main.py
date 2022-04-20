@@ -89,3 +89,7 @@ def predict( payload: Payload):
     response = helper_functions.cluster(corpus_and_embeddings, queries_and_embeddings, max_results, acc_greater_than)
     
     return response
+
+@app.get("/")
+async def root():
+    return {"message": "Hello seekers"}
