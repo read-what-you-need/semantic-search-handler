@@ -10,6 +10,7 @@ import boto3
 aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
 aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 aws_region_name = os.getenv('AWS_REGION_NAME')
+storage_bucket_name = os.getenv('AWS_FILES_BUCKET_NAME')
 
 
 # establish connection with s3 bucket
@@ -42,13 +43,13 @@ def download_text_file_and_embeddings_from_s3_bucket(sess):
     
     # download the corpus encodings for the given uuid file
     with open('tmp/'+sess+'/corpus_encode.npy', 'wb') as f:
-        s3.download_fileobj('readneedobjects', 'v2/'+sess+'/corpus_encode.npy', f)
+        s3.download_fileobj(storage_bucket_name, 'v2/'+sess+'/corpus_encode.npy', f)
 
     print('\ndownloading encoded weights 👣')
 
     # download the text content of the given file
     # used for generating lines after running the cosine similiarity match after the clustering is done
-    s3.download_file('readneedobjects', 'v2/'+sess+'/file.txt', 'tmp/'+sess+'/file.txt')
+    s3.download_file(storage_bucket_name, 'v2/'+sess+'/file.txt', 'tmp/'+sess+'/file.txt')
     
     print('files download complete!')
 

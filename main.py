@@ -40,8 +40,6 @@ embedder = SentenceTransformer(model_path)
 
 # create temp dir for storing embeddings 
 dir = 'tmp'
-                                 
-
 class Payload(BaseModel):
     file_id: str
     query: str
